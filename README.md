@@ -23,7 +23,6 @@
 story_agent/
 ├─ main.py                         # 主 Agent 入口
 ├─ story_session.py                # 故事创建、选择、读取和 JSON 保存
-├─ manual_test_prompt_to_forge.py # 不经过 Agent，手动测试两个 Tool 的链路
 ├─ tools/
 │  ├─ prompt_optimizer_tool.py    # 提示词优化 Tool
 │  ├─ local_image_tool.py         # 本地/自建服务器生图 Tool
@@ -39,7 +38,7 @@ story_agent/
 │  └─ 故事名称__短会话ID/
 │     ├─ conversation.json         # 故事名称、完整 session_id 和消息
 │     └─ pictures/                 # 该故事生成的本地/云端图片
-└─ 项目开发总结_2026-09-23.md
+└─ examples/                       # 脱敏的演示对话和示例图片
 ```
 
 ## 2. 安装：先选择生图后端
@@ -433,65 +432,48 @@ image_type="scene"     → 场景剧情，2496×1664 横图
 WAI 普通文生图：
 
 ```python
-local_image_model = "wai"
-local_image_mode = "txt2img"
+LOCAL_IMAGE_MODEL = "wai"
+LOCAL_IMAGE_MODE = "txt2img"
 ```
 
 WAI OpenPose：
 
 ```python
-local_image_model = "wai"
-local_image_mode = "openpose"
+LOCAL_IMAGE_MODEL = "wai"
+LOCAL_IMAGE_MODE = "openpose"
 ```
 
 千问文生图或图生图：
 
 ```python
-local_image_model = "qwen_image_2_1"
-local_image_port = 6006
-local_image_mode = "txt2img"  # 改成 "img2img" 就启用参考图
+LOCAL_IMAGE_MODEL = "qwen_image_2_1"
+LOCAL_IMAGE_PORT = 6006
+LOCAL_IMAGE_MODE = "txt2img"  # 改成 "img2img" 就启用参考图
 ```
 
-模式由 `main.py` 的 `local_image_mode` 在程序启动时固定，Agent 不负责选择，也看不到参考图路径。选择 `openpose` 或 `img2img` 后，每次 Tool 真正执行都会直接在终端询问本次参考图路径，不会复用上一张图片。WAI 的参考图用于提取 OpenPose 骨架；千问的参考图会作为图像条件传给 Qwen-Image-2.1。
+模式由 `main.py` 的 `LOCAL_IMAGE_MODE` 在程序启动时固定，Agent 不负责选择，也看不到参考图路径。选择 `openpose` 或 `img2img` 后，每次 Tool 真正执行都会直接在终端询问本次参考图路径，不会复用上一张图片。WAI 的参考图用于提取 OpenPose 骨架；千问的参考图会作为图像条件传给 Qwen-Image-2.1。
 
-## 5. 手动测试两个 Tool
+## 5. 测试完整链路
 
-如果想跳过 Agent 的自主决策，直接观察：
+公开仓库直接通过 `main.py` 验证完整链路：
 
 ```text
-Prompt Optimizer → 本地/自建服务器模型 / 云端 API
+用户请求 → Agent 选择 Tool → Prompt Optimizer → 本地模型或云端 API → 保存图片
 ```
 
-可以运行 `manual_test_prompt_to_forge.py`。
-
-先修改文件顶部：
-
-```python
-IMAGE_BACKEND = "local"  # "local"=本地或自建服务；"cloud"=云端图片 API
-CLOUD_API_MODEL = "seedream"  # 云端可选 "seedream" 或 "flux"
-LOCAL_IMAGE_MODEL = "wai"
-LOCAL_IMAGE_PORT = None
-LOCAL_IMAGE_MODE = "txt2img"
-IMAGE_TYPE = "character"  # character=人物竖图；scene=场景横图
-SEED = -1
-OUTPUT_PREFIX = "manual_chain_test"
-```
-
-- `IMAGE_BACKEND="local"`：使用 `LOCAL_IMAGE_MODEL` 注册的本地或自建服务器模型；
-- `LOCAL_IMAGE_MODE`：WAI 支持 `txt2img/openpose`，千问支持 `txt2img/img2img`；
-- `IMAGE_BACKEND="cloud"`：使用付费云端图片 API；
-- `CLOUD_API_MODEL`：选择 Seedream 或 Flux；
-- `IMAGE_TYPE` 会根据本地、Seedream 或 Flux 的配置自动转换为对应尺寸。
-
-测试用的故事或画面描述在文件底部的 `prompt` 变量中修改。
-
-然后直接运行：
+按第 2 节配置环境变量，按第 4 节选择本地模型与参考图模式。如果使用 Forge，先确认 Forge 已通过 `--api` 启动。然后在项目根目录运行：
 
 ```powershell
-& 'D:\A_Python\conda_envs\edu_rag\python.exe' 'D:\A_Python\跟着黑马学ai\Edu_RAG\langchain\story_agent\manual_test_prompt_to_forge.py'
+python main.py
 ```
 
-这个测试会真实调用一次 DeepSeek，再调用一次所选的生图后端，因此会产生 API 用量并生成图片。
+新建一个临时故事，再输入一条明确的生图请求，例如：
+
+```text
+请先优化提示词，再调用本地生图工具，生成一张雪原车站的横向场景插画。
+```
+
+该流程会真实调用 DeepSeek 和所选的生图后端，因此可能产生 API 费用并生成图片。如果只想排查某个 Tool，按下一节单独运行对应文件。
 
 ## 6. 单独测试各 Tool
 
@@ -697,7 +679,7 @@ print(get_local_image_config("wai"))
 print(get_cloud_api_config("seedream"))
 ```
 
-确认模型名、端口、接口地址、尺寸、提示词文件和默认参数正确后，再运行 `manual_test_prompt_to_forge.py` 测试完整链路。
+确认模型名、端口、接口地址、尺寸、提示词文件和默认参数正确后，再按第 5 节运行 `main.py` 测试完整链路。
 
 ## 10. 常见问题
 
