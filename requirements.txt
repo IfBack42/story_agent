@@ -1,0 +1,9 @@
+# 在 Python 3.10.18、edu_rag 环境中验证通过。
+# 这里只列项目源码直接使用的包；它们的间接依赖由 pip 自动安装。
+
+langchain==1.2.10
+langchain-core==1.2.16
+langchain-openai==1.1.10
+langgraph==1.0.8
+pydantic==2.12.5
+requests==2.32.5
